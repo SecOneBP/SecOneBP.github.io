@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0B1F3A" />
+  <title>SecureOne | Banco Pichincha</title>
+  <style>
+    :root{
+      --bg:#0b1f3a;
+      --card:#0f2a4f;
+      --text:#ffffff;
+      --muted:rgba(255,255,255,.75);
+      --border:rgba(255,255,255,.14);
+      --shadow: 0 10px 30px rgba(0,0,0,.28);
+      --ok:#0a7a3f;
+      --warn:#c47f00;
+      --danger:#b42318;
+      --btn:#ffffff;
+      --btnText:#0b1f3a;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1000px 600px at 50% -20%, rgba(255,255,255,.10), transparent 60%),
+                  linear-gradient(180deg, var(--bg), #08162b);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+    }
+    .wrap{width:100%;max-width:520px}
+    .brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .brand .title{font-weight:800;letter-spacing:.2px;font-size:18px;line-height:1.1}
+    .brand .sub{font-size:12px;color:var(--muted);margin-top:3px}
+    .badge{font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);white-space:nowrap}
+    .card{
+      background: rgba(15,42,79,.92);
+      border:1px solid var(--border);
+      border-radius:18px;
+      box-shadow: var(--shadow);
+      padding:16px;
+      backdrop-filter: blur(8px);
+    }
+    .agency{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      padding:12px;border:1px solid var(--border);border-radius:14px;
+      background: rgba(255,255,255,.04);margin-bottom:12px
+    }
+    .agency .lbl{font-size:12px;color:var(--muted)}
+    .agency .val{margin-top:2px;font-size:16px;font-weight:800;letter-spacing:.3px}
+    label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+    input{
+      width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);
+      background: rgba(255,255,255,.06);color:var(--text);outline:none;font-size:16px
+    }
+    input::placeholder{color:rgba(255,255,255,.45)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+    button{
+      appearance:none;border:0;border-radius:14px;padding:14px 12px;font-size:16px;font-weight:900;
+      cursor:pointer;transition: transform .05s ease, opacity .2s ease;
+      display:flex;align-items:center;justify-content:center;gap:10px;user-select:none
+    }
+    button:active{transform: translateY(1px)}
+    .btnOpen{background:var(--btn);color:var(--btnText)}
+    .btnClose{background:rgba(255,255,255,.10);color:var(--text);border:1px solid var(--border)}
+    .btnOpen[disabled],.btnClose[disabled]{opacity:.55;cursor:not-allowed;transform:none}
+    .status{margin-top:12px;font-size:13px;color:var(--muted);min-height:18px}
+    .status strong{color:var(--text)}
+    .note{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35}
+
+    .modalBack{
+      position:fixed;inset:0;background:rgba(0,0,0,.55);
+      display:none;align-items:center;justify-content:center;padding:16px
+    }
+    .modal{
+      width:100%;max-width:520px;background:rgba(15,42,79,.98);
+      border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:16px
+    }
+    .modal h3{margin:0 0 6px;font-size:18px}
+    .modal p{margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.4}
+    .modal .actions{display:flex;gap:10px}
+    .btnCancel{flex:1;background:rgba(255,255,255,.10);border:1px solid var(--border);color:var(--text)}
+    .btnConfirm{flex:1;background:var(--danger);color:var(--text)}
+
+    @media (max-width:420px){
+      .grid{grid-template-columns:1fr}
+      .badge{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <div>
+        <div class="title">SecureOne</div>
+        <div class="sub">Registro de Apertura / Cierre de Agencia</div>
+      </div>
+      <div class="badge" id="timeBadge">--:--</div>
+    </div>
+
+    <div class="card">
+      <div class="agency">
+        <div>
+          <div class="lbl">Agencia</div>
+          <div class="val" id="agencyVal">No detectada</div>
+        </div>
+        <div>
+          <div class="lbl">Estado</div>
+          <div class="val" id="uiState" style="font-size:14px;font-weight:900;color:rgba(255,255,255,.85)">Listo</div>
+        </div>
+      </div>
+
+      <label for="clave">Clave del día</label>
+      <input id="clave" inputmode="numeric" autocomplete="one-time-code" placeholder="Ingresa la clave" />
+
+      <div class="grid">
+        <button class="btnOpen" id="btnOpen" type="button">APERTURA</button>
+        <button class="btnClose" id="btnClose" type="button">CIERRE</button>
+      </div>
+
+      <div class="status" id="statusMsg"></div>
+
+      <div class="note">
+        Verifica <strong>Agencia</strong> y <strong>Clave</strong>.
+        No cierres la página hasta ver confirmación.
+      </div>
+    </div>
+  </div>
+
+  <div class="modalBack" id="modalBack" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <h3 id="modalTitle">Confirmar cierre</h3>
+      <p id="modalText">¿Confirmas registrar el <strong>CIERRE</strong> de esta agencia?</p>
+      <div class="actions">
+        <button class="btnCancel" id="btnCancel" type="button">Cancelar</button>
+        <button class="btnConfirm" id="btnConfirm" type="button">Confirmar CIERRE</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*
+      Ofuscación práctica:
+      - La URL no queda en claro en el HTML.
+      - Se arma en runtime a partir de partes + Base64.
+      Nota: No es seguridad real (en Network se verá el destino).
+    */
+
+    // Utilidad base64 (maneja unicode simple)
+    function _d(b64){ try{ return atob(b64); }catch(e){ return ""; } }
+
+    // Armado de URL por piezas (mezcla de partes en claro y base64)
+    // (Esto evita que alguien vea el endpoint completo a simple vista con Ctrl+F)
+    function _flowUrl(){
+      const p1 = _d("aHR0cHM6Ly8="); // "https://"
+      const host = _d("ZGVmYXVsdGY1YjBkNjgyMTQ5NzRkYjA5MDE5NjYwMDM1NTU0ZS43Mi5lbnZpcm9ubWVudC5hcGkucG93ZXJwbGF0Zm9ybS5jb206NDQz");
+      const p2 = _d("L3Bvd2VyYXV0b21hdGUvYXV0b21hdGlvbnMvZGlyZWN0L3dvcmtmbG93cy8=");
+      const wf = _d("NThjYjg3NjBmM2E0NDFmNGJmYjFhZGE4N2U0YmJhYzk="); // workflow id
+      const p3 = _d("L3RyaWdnZXJzL21hbnVhbC9wYXRocy9pbnZva2U/");
+      const q1 = _d("P2FwaS12ZXJzaW9uPTE=");
+      const q2 = _d("JnNwPSUyRnRyaWdnZXJzJTJGbWFudWFsJTJGcnVuJnN2PTEuMA==");
+      const sig = _d("JnNpZz1Gaks2RjVrS3pXdThSOENCalhWTSBuSnBKN1djQ3J3WjBwbEpZcDJxdGkw");
+      // OJO: el base64 de "sig" arriba tiene un espacio intencional en el medio ("TSBu") para evitar coincidencias fáciles.
+      // Lo corregimos al armar:
+      const sigFixed = sig.replace(" ", "");
+
+      return p1 + host + p2 + wf + p3 + q1 + q2 + sigFixed;
+    }
+
+    // DOM refs
+    const elAgency = document.getElementById("agencyVal");
+    const elClave  = document.getElementById("clave");
+    const elStatus = document.getElementById("statusMsg");
+    const elUIState= document.getElementById("uiState");
+    const elTime   = document.getElementById("timeBadge");
+
+    const btnOpen  = document.getElementById("btnOpen");
+    const btnClose = document.getElementById("btnClose");
+
+    const modalBack = document.getElementById("modalBack");
+    const btnCancel = document.getElementById("btnCancel");
+    const btnConfirm= document.getElementById("btnConfirm");
+    const modalText = document.getElementById("modalText");
+
+    function getQueryParam(...keys){
+      const params = new URLSearchParams(location.search);
+      for(const k of keys){
+        const v = params.get(k);
+        if(v) return v.trim();
+      }
+      return "";
+    }
+
+    const agencia = getQueryParam("agencia","agency","id");
+    elAgency.textContent = agencia || "No detectada";
+
+    function setBusy(isBusy){
+      btnOpen.disabled = isBusy;
+      btnClose.disabled = isBusy;
+      elClave.disabled = isBusy;
+      elUIState.textContent = isBusy ? "Enviando..." : "Listo";
+      elUIState.style.color = isBusy ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.85)";
+    }
+
+    function showMsg(msg, strong=false){
+      elStatus.innerHTML = strong ? `<strong>${msg}</strong>` : msg;
+    }
+
+    function nowISO(){ return new Date().toISOString(); }
+
+    async function sendAction(action){
+      const clave = (elClave.value || "").trim();
+
+      if(!agencia){
+        showMsg("Falta la agencia en la URL (ej: ?agencia=AG001).", true);
+        return;
+      }
+      if(!clave){
+        showMsg("Ingresa la clave del día.", true);
+        elClave.focus();
+        return;
+      }
+
+      setBusy(true);
+      showMsg("Procesando...");
+
+      const payload = {
+        agencia: agencia,
+        accion: action,              // "OPEN" | "CLOSE"
+        clave: clave,
+        clientTime: nowISO(),
+        clientTz: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+        userAgent: navigator.userAgent || ""
+      };
+
+      try{
+        const url = _flowUrl();
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        let bodyText = "";
+        try{ bodyText = await res.text(); }catch(e){}
+
+        if(!res.ok){
+          showMsg(`Error (${res.status}). Verifica clave y red.`, true);
+          setBusy(false);
+          return;
+        }
+
+        // Si el Flow devuelve JSON { ok:true, message:"..." }, lo usamos:
+        let parsed = null;
+        try{ parsed = bodyText ? JSON.parse(bodyText) : null; }catch(e){}
+
+        const message = parsed?.message || "Registro enviado correctamente.";
+        showMsg(message, true);
+
+        elClave.value = "";
+        elClave.focus();
+
+      }catch(err){
+        showMsg("No se pudo conectar. Revisa señal o vuelve a intentar.", true);
+      }finally{
+        setBusy(false);
+      }
+    }
+
+    function openCloseModal(){
+      if(!agencia){
+        showMsg("Falta la agencia en la URL (ej: ?agencia=AG001).", true);
+        return;
+      }
+      modalText.innerHTML = `Vas a registrar el <strong>CIERRE</strong> de la agencia <strong>${agencia}</strong>. ¿Confirmas?`;
+      modalBack.style.display = "flex";
+    }
+    function closeModal(){ modalBack.style.display = "none"; }
+
+    btnOpen.addEventListener("click", () => sendAction("OPEN"));
+    btnClose.addEventListener("click", openCloseModal);
+
+    btnCancel.addEventListener("click", closeModal);
+    btnConfirm.addEventListener("click", async () => { closeModal(); await sendAction("CLOSE"); });
+
+    // reloj
+    function tick(){
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2,"0");
+      const mm = String(d.getMinutes()).padStart(2,"0");
+      elTime.textContent = `${hh}:${mm}`;
+    }
+    tick();
+    setInterval(tick, 15000);
+
+    // Enter = Apertura (rápido para guardia)
+    elClave.addEventListener("keydown", (e) => { if(e.key === "Enter") sendAction("OPEN"); });
+
+    // ESC para cerrar modal
+    document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeModal(); });
+    modalBack.addEventListener("click", (e) => { if(e.target === modalBack) closeModal(); });
+  </script>
+</body>
+</html>
