@@ -108,7 +108,7 @@
   </div>
 
 <script>
-const FLOW_URL = "TU_URL_DEL_FLOW_AQUI"; // <-- pega tu URL completa
+const FLOW_URL = "https://defaultf5b0d68214974db09019660035554e.72.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/58cb8760f3a441f4bfb1ada87e4bbac9/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=FjK6F5kKzWu8R8CBjHVMjnJp57WcCrwZ0plJYp2qti0"; // <-- pega tu URL completa
 
 const params = new URLSearchParams(window.location.search);
 const locationId = (params.get("loc") || params.get("agencia") || "").trim();
@@ -175,3 +175,4 @@ async function sendAction(action){
 
 </body>
 </html>
+
