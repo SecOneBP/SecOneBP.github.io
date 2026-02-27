@@ -75,7 +75,6 @@
     .status strong{color:var(--text)}
     .hint{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35}
 
-    /* Modal */
     .modalBack{
       position:fixed;inset:0;background:rgba(0,0,0,.55);
       display:none;align-items:center;justify-content:center;padding:16px
@@ -137,7 +136,6 @@
     </div>
   </div>
 
-  <!-- Modal confirmación cierre -->
   <div class="modalBack" id="modalBack" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <h3 id="modalTitle">Confirmar cierre</h3>
@@ -150,8 +148,9 @@
   </div>
 
 <script>
-  // ✅ URL corta (sin ofuscar) como pediste
-  const FLOW_URL = "https://surl.lu/hmqrss";
+  // ✅ URL LARGA nueva (sin ofuscar) + NO-CORS
+  const FLOW_URL =
+  "https://defaultf5b0d68214974db09019660035554e.72.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/afe3fead85904c7b8cdf784fdbd5f9c9/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=wuKx5s391DgC3trjpPSj3UdeCf1qUjjMHzSC8IpJUT8";
 
   const elAgency = document.getElementById("agencyVal");
   const elClave  = document.getElementById("clave");
@@ -167,8 +166,7 @@
   const btnConfirm= document.getElementById("btnConfirm");
   const modalText = document.getElementById("modalText");
 
-  // ✅ Parámetro de agencia desde la URL:
-  // soporta: ?loc=6  o  ?agencia=6  o  ?id=6
+  // ✅ QR params: ?loc=6 (recomendado) o ?agencia=6 o ?id=6
   const params = new URLSearchParams(window.location.search);
   const locationId = (params.get("loc") || params.get("agencia") || params.get("id") || "DESCONOCIDO").trim();
   elAgency.textContent = locationId || "No detectada";
@@ -202,9 +200,10 @@
     setBusy(true);
     showMsg("<strong>Procesando…</strong> Enviando solicitud al sistema.");
 
+    // ✅ Payload compatible con el flow: locationId (como antes) + extras
     const payload = {
-      locationId: locationId, // compat con tu flow
-      accion: action,         // "OPEN" | "CLOSE"
+      locationId: locationId,
+      accion: action,
       clave: clave,
       clientTime: nowISO()
     };
@@ -215,10 +214,10 @@
         mode: "no-cors",
         body: JSON.stringify(payload),
         cache: "no-store",
-        keepalive: true,
-        redirect: "follow"
+        keepalive: true
       });
 
+      // ✅ En no-cors no sabemos respuesta, solo confirmamos envío (como tu versión que funcionaba)
       showMsg("<strong>Enviado ✅</strong> Si hay rechazo, el sistema lo validará internamente.");
       elClave.value = "";
       elClave.focus();
@@ -247,7 +246,7 @@
   // Enter = Apertura
   elClave.addEventListener("keydown", (e) => { if(e.key === "Enter") sendAction("OPEN"); });
 
-  // reloj
+  // Reloj
   function tick(){
     const d = new Date();
     const hh = String(d.getHours()).padStart(2,"0");
