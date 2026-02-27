@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#0B1F3A" />
+  <meta name="robots" content="noindex,nofollow" />
   <title>SecureOne | Banco Pichincha</title>
+
   <style>
     :root{
       --bg:#0b1f3a;
@@ -13,11 +14,12 @@
       --muted:rgba(255,255,255,.75);
       --border:rgba(255,255,255,.14);
       --shadow: 0 10px 30px rgba(0,0,0,.28);
-      --ok:#0a7a3f;
-      --warn:#c47f00;
       --danger:#b42318;
       --btn:#ffffff;
       --btnText:#0b1f3a;
+      --soft:rgba(255,255,255,.06);
+      --ok:#22c55e;
+      --warn:#f59e0b;
     }
     *{box-sizing:border-box}
     body{
@@ -34,7 +36,7 @@
     }
     .wrap{width:100%;max-width:520px}
     .brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-    .brand .title{font-weight:800;letter-spacing:.2px;font-size:18px;line-height:1.1}
+    .brand .title{font-weight:900;letter-spacing:.2px;font-size:18px;line-height:1.1}
     .brand .sub{font-size:12px;color:var(--muted);margin-top:3px}
     .badge{font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:999px;color:var(--muted);white-space:nowrap}
     .card{
@@ -50,8 +52,8 @@
       padding:12px;border:1px solid var(--border);border-radius:14px;
       background: rgba(255,255,255,.04);margin-bottom:12px
     }
-    .agency .lbl{font-size:12px;color:var(--muted)}
-    .agency .val{margin-top:2px;font-size:16px;font-weight:800;letter-spacing:.3px}
+    .lbl{font-size:12px;color:var(--muted)}
+    .val{margin-top:2px;font-size:16px;font-weight:900;letter-spacing:.3px}
     label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
     input{
       width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);
@@ -68,10 +70,22 @@
     .btnOpen{background:var(--btn);color:var(--btnText)}
     .btnClose{background:rgba(255,255,255,.10);color:var(--text);border:1px solid var(--border)}
     .btnOpen[disabled],.btnClose[disabled]{opacity:.55;cursor:not-allowed;transform:none}
-    .status{margin-top:12px;font-size:13px;color:var(--muted);min-height:18px}
+    .status{
+      margin-top:12px;font-size:13px;color:var(--muted);min-height:18px;
+      padding:12px;border-radius:14px;background:var(--soft);border:1px solid rgba(255,255,255,.08)
+    }
     .status strong{color:var(--text)}
-    .note{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35}
+    .hint{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.04);color:rgba(255,255,255,.85);font-size:12px
+    }
+    .dot{width:10px;height:10px;border-radius:50%}
+    .dot.ok{background:var(--ok)}
+    .dot.warn{background:var(--warn)}
 
+    /* Modal */
     .modalBack{
       position:fixed;inset:0;background:rgba(0,0,0,.55);
       display:none;align-items:center;justify-content:center;padding:16px
@@ -92,6 +106,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="brand">
@@ -108,10 +123,15 @@
           <div class="lbl">Agencia</div>
           <div class="val" id="agencyVal">No detectada</div>
         </div>
-        <div>
+        <div style="text-align:right">
           <div class="lbl">Estado</div>
           <div class="val" id="uiState" style="font-size:14px;font-weight:900;color:rgba(255,255,255,.85)">Listo</div>
         </div>
+      </div>
+
+      <div class="pill" id="corsHint">
+        <span class="dot warn"></span>
+        Envío rápido (sin leer respuesta)
       </div>
 
       <label for="clave">Clave del día</label>
@@ -122,15 +142,18 @@
         <button class="btnClose" id="btnClose" type="button">CIERRE</button>
       </div>
 
-      <div class="status" id="statusMsg"></div>
+      <div class="status" id="statusMsg">
+        <strong>Listo.</strong> Ingresa la clave y registra la acción.
+      </div>
 
-      <div class="note">
-        Verifica <strong>Agencia</strong> y <strong>Clave</strong>.
-        No cierres la página hasta ver confirmación.
+      <div class="hint">
+        Nota: por CORS, esta pantalla <strong>no puede validar</strong> la respuesta del flujo.
+        La validación real debe ocurrir en Power Automate (clave/horarios/estado).
       </div>
     </div>
   </div>
 
+  <!-- Modal confirmación cierre -->
   <div class="modalBack" id="modalBack" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <h3 id="modalTitle">Confirmar cierre</h3>
@@ -142,168 +165,121 @@
     </div>
   </div>
 
-  <script>
-    /*
-      Ofuscación práctica:
-      - La URL no queda en claro en el HTML.
-      - Se arma en runtime a partir de partes + Base64.
-      Nota: No es seguridad real (en Network se verá el destino).
-    */
+<script>
+  // 🔗 MISMA URL (la que ya te funciona con no-cors)
+  const FLOW_URL =
+  "https://defaultf5b0d68214974db09019660035554e.72.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/58cb8760f3a441f4bfb1ada87e4bbac9/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=FjK6F5kKzWu8R8CBjHVMjnJp57WcCrwZ0plJYp2qti0";
 
-    // Utilidad base64 (maneja unicode simple)
-    function _d(b64){ try{ return atob(b64); }catch(e){ return ""; } }
+  const elAgency = document.getElementById("agencyVal");
+  const elClave  = document.getElementById("clave");
+  const elStatus = document.getElementById("statusMsg");
+  const elUIState= document.getElementById("uiState");
+  const elTime   = document.getElementById("timeBadge");
 
-    // Armado de URL por piezas (mezcla de partes en claro y base64)
-    // (Esto evita que alguien vea el endpoint completo a simple vista con Ctrl+F)
-    function _flowUrl(){
-      const p1 = _d("aHR0cHM6Ly8="); // "https://"
-      const host = _d("ZGVmYXVsdGY1YjBkNjgyMTQ5NzRkYjA5MDE5NjYwMDM1NTU0ZS43Mi5lbnZpcm9ubWVudC5hcGkucG93ZXJwbGF0Zm9ybS5jb206NDQz");
-      const p2 = _d("L3Bvd2VyYXV0b21hdGUvYXV0b21hdGlvbnMvZGlyZWN0L3dvcmtmbG93cy8=");
-      const wf = _d("NThjYjg3NjBmM2E0NDFmNGJmYjFhZGE4N2U0YmJhYzk="); // workflow id
-      const p3 = _d("L3RyaWdnZXJzL21hbnVhbC9wYXRocy9pbnZva2U/");
-      const q1 = _d("P2FwaS12ZXJzaW9uPTE=");
-      const q2 = _d("JnNwPSUyRnRyaWdnZXJzJTJGbWFudWFsJTJGcnVuJnN2PTEuMA==");
-      const sig = _d("JnNpZz1Gaks2RjVrS3pXdThSOENCalhWTSBuSnBKN1djQ3J3WjBwbEpZcDJxdGkw");
-      // OJO: el base64 de "sig" arriba tiene un espacio intencional en el medio ("TSBu") para evitar coincidencias fáciles.
-      // Lo corregimos al armar:
-      const sigFixed = sig.replace(" ", "");
+  const btnOpen  = document.getElementById("btnOpen");
+  const btnClose = document.getElementById("btnClose");
 
-      return p1 + host + p2 + wf + p3 + q1 + q2 + sigFixed;
+  const modalBack = document.getElementById("modalBack");
+  const btnCancel = document.getElementById("btnCancel");
+  const btnConfirm= document.getElementById("btnConfirm");
+  const modalText = document.getElementById("modalText");
+
+  // 📍 Id agencia desde URL (mantenemos compatibilidad: loc/agencia/id)
+  const params = new URLSearchParams(window.location.search);
+  const locationId = (params.get("loc") || params.get("agencia") || params.get("id") || "DESCONOCIDO").trim();
+  elAgency.textContent = locationId || "No detectada";
+
+  function setBusy(isBusy){
+    btnOpen.disabled = isBusy;
+    btnClose.disabled = isBusy;
+    elClave.disabled = isBusy;
+    elUIState.textContent = isBusy ? "Enviando..." : "Listo";
+  }
+
+  function showMsg(html){
+    elStatus.innerHTML = html;
+  }
+
+  function nowISO(){ return new Date().toISOString(); }
+
+  // ✅ Importante:
+  // Con mode:no-cors NO podremos leer status/response.
+  // Solo podemos “enviar” y mostrar un mensaje de envío.
+  async function sendAction(action){
+    const clave = (elClave.value || "").trim();
+
+    if(!locationId || locationId === "DESCONOCIDO"){
+      showMsg("<strong>Error.</strong> Falta el parámetro de agencia en la URL (ej: ?loc=6).");
+      return;
+    }
+    if(!clave){
+      showMsg("<strong>Falta clave.</strong> Ingresa la clave del día.");
+      elClave.focus();
+      return;
     }
 
-    // DOM refs
-    const elAgency = document.getElementById("agencyVal");
-    const elClave  = document.getElementById("clave");
-    const elStatus = document.getElementById("statusMsg");
-    const elUIState= document.getElementById("uiState");
-    const elTime   = document.getElementById("timeBadge");
+    setBusy(true);
+    showMsg("<strong>Procesando…</strong> Enviando solicitud al sistema.");
 
-    const btnOpen  = document.getElementById("btnOpen");
-    const btnClose = document.getElementById("btnClose");
+    // Payload compatible: mantenemos locationId como antes + agregamos accion/clave
+    const payload = {
+      locationId: locationId,
+      accion: action,     // "OPEN" | "CLOSE"
+      clave: clave,
+      clientTime: nowISO()
+    };
 
-    const modalBack = document.getElementById("modalBack");
-    const btnCancel = document.getElementById("btnCancel");
-    const btnConfirm= document.getElementById("btnConfirm");
-    const modalText = document.getElementById("modalText");
+    try{
+      await fetch(FLOW_URL, {
+        method: "POST",
+        mode: "no-cors",
+        // En no-cors, el navegador restringe headers; mejor NO forzar Content-Type
+        body: JSON.stringify(payload)
+      });
 
-    function getQueryParam(...keys){
-      const params = new URLSearchParams(location.search);
-      for(const k of keys){
-        const v = params.get(k);
-        if(v) return v.trim();
-      }
-      return "";
+      // Si no hubo error de red, asumimos "enviado".
+      showMsg("<strong>Enviado ✅</strong> La validación se realizará en el flujo. Puedes cerrar esta ventana.");
+      elClave.value = "";
+      elClave.focus();
+    }catch(e){
+      showMsg("<strong>Error de conexión.</strong> Revisa señal e intenta nuevamente.");
+    }finally{
+      setBusy(false);
     }
+  }
 
-    const agencia = getQueryParam("agencia","agency","id");
-    elAgency.textContent = agencia || "No detectada";
-
-    function setBusy(isBusy){
-      btnOpen.disabled = isBusy;
-      btnClose.disabled = isBusy;
-      elClave.disabled = isBusy;
-      elUIState.textContent = isBusy ? "Enviando..." : "Listo";
-      elUIState.style.color = isBusy ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.85)";
+  // Modal cierre
+  function openCloseModal(){
+    if(!locationId || locationId === "DESCONOCIDO"){
+      showMsg("<strong>Error.</strong> Falta el parámetro de agencia en la URL (ej: ?loc=6).");
+      return;
     }
+    modalText.innerHTML = `Vas a registrar el <strong>CIERRE</strong> de la agencia <strong>${locationId}</strong>. ¿Confirmas?`;
+    modalBack.style.display = "flex";
+  }
+  function closeModal(){ modalBack.style.display = "none"; }
 
-    function showMsg(msg, strong=false){
-      elStatus.innerHTML = strong ? `<strong>${msg}</strong>` : msg;
-    }
+  btnOpen.addEventListener("click", () => sendAction("OPEN"));
+  btnClose.addEventListener("click", openCloseModal);
+  btnCancel.addEventListener("click", closeModal);
+  btnConfirm.addEventListener("click", async () => { closeModal(); await sendAction("CLOSE"); });
 
-    function nowISO(){ return new Date().toISOString(); }
+  // Enter = Apertura (rápido)
+  elClave.addEventListener("keydown", (e) => { if(e.key === "Enter") sendAction("OPEN"); });
 
-    async function sendAction(action){
-      const clave = (elClave.value || "").trim();
+  // reloj
+  function tick(){
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2,"0");
+    const mm = String(d.getMinutes()).padStart(2,"0");
+    elTime.textContent = `${hh}:${mm}`;
+  }
+  tick();
+  setInterval(tick, 15000);
 
-      if(!agencia){
-        showMsg("Falta la agencia en la URL (ej: ?agencia=AG001).", true);
-        return;
-      }
-      if(!clave){
-        showMsg("Ingresa la clave del día.", true);
-        elClave.focus();
-        return;
-      }
-
-      setBusy(true);
-      showMsg("Procesando...");
-
-      const payload = {
-        agencia: agencia,
-        accion: action,              // "OPEN" | "CLOSE"
-        clave: clave,
-        clientTime: nowISO(),
-        clientTz: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
-        userAgent: navigator.userAgent || ""
-      };
-
-      try{
-        const url = _flowUrl();
-
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        let bodyText = "";
-        try{ bodyText = await res.text(); }catch(e){}
-
-        if(!res.ok){
-          showMsg(`Error (${res.status}). Verifica clave y red.`, true);
-          setBusy(false);
-          return;
-        }
-
-        // Si el Flow devuelve JSON { ok:true, message:"..." }, lo usamos:
-        let parsed = null;
-        try{ parsed = bodyText ? JSON.parse(bodyText) : null; }catch(e){}
-
-        const message = parsed?.message || "Registro enviado correctamente.";
-        showMsg(message, true);
-
-        elClave.value = "";
-        elClave.focus();
-
-      }catch(err){
-        showMsg("No se pudo conectar. Revisa señal o vuelve a intentar.", true);
-      }finally{
-        setBusy(false);
-      }
-    }
-
-    function openCloseModal(){
-      if(!agencia){
-        showMsg("Falta la agencia en la URL (ej: ?agencia=AG001).", true);
-        return;
-      }
-      modalText.innerHTML = `Vas a registrar el <strong>CIERRE</strong> de la agencia <strong>${agencia}</strong>. ¿Confirmas?`;
-      modalBack.style.display = "flex";
-    }
-    function closeModal(){ modalBack.style.display = "none"; }
-
-    btnOpen.addEventListener("click", () => sendAction("OPEN"));
-    btnClose.addEventListener("click", openCloseModal);
-
-    btnCancel.addEventListener("click", closeModal);
-    btnConfirm.addEventListener("click", async () => { closeModal(); await sendAction("CLOSE"); });
-
-    // reloj
-    function tick(){
-      const d = new Date();
-      const hh = String(d.getHours()).padStart(2,"0");
-      const mm = String(d.getMinutes()).padStart(2,"0");
-      elTime.textContent = `${hh}:${mm}`;
-    }
-    tick();
-    setInterval(tick, 15000);
-
-    // Enter = Apertura (rápido para guardia)
-    elClave.addEventListener("keydown", (e) => { if(e.key === "Enter") sendAction("OPEN"); });
-
-    // ESC para cerrar modal
-    document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeModal(); });
-    modalBack.addEventListener("click", (e) => { if(e.target === modalBack) closeModal(); });
-  </script>
+  // ESC cierra modal
+  document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeModal(); });
+  modalBack.addEventListener("click", (e) => { if(e.target === modalBack) closeModal(); });
+</script>
 </body>
 </html>
