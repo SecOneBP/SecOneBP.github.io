@@ -75,6 +75,7 @@
     .status strong{color:var(--text)}
     .hint{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35}
 
+    /* Modal */
     .modalBack{
       position:fixed;inset:0;background:rgba(0,0,0,.55);
       display:none;align-items:center;justify-content:center;padding:16px
@@ -119,7 +120,7 @@
       </div>
 
       <label for="clave">Clave del día</label>
-      <input id="clave" inputmode="numeric" autocomplete="one-time-code" placeholder="Ingresa la clave" />
+      <input id="clave" autocomplete="one-time-code" placeholder="Ingresa la clave" />
 
       <div class="grid">
         <button class="btnOpen" id="btnOpen" type="button">APERTURA</button>
@@ -131,11 +132,12 @@
       </div>
 
       <div class="hint">
-        Nota: la pantalla confirma <strong>envío</strong>. Validación real (clave/estado/horario) ocurre en Power Automate.
+        Nota: esta pantalla confirma <strong>envío</strong>. La validación real (clave/estado/horario) ocurre en Power Automate.
       </div>
     </div>
   </div>
 
+  <!-- Modal confirmación cierre -->
   <div class="modalBack" id="modalBack" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <h3 id="modalTitle">Confirmar cierre</h3>
@@ -148,27 +150,8 @@
   </div>
 
 <script>
-  // Base64 decode
-  function _d(s){ try { return atob(s); } catch(e){ return ""; } }
-
-  // ✅ URL ofuscada para TU NUEVA URL
-  function getFlowUrl(){
-    const p1 = _d("aHR0cHM6Ly8="); // https://
-    const host = _d("ZGVmYXVsdGY1YjBkNjgyMTQ5NzRkYjA5MDE5NjYwMDM1NTU0ZS43Mi5lbnZpcm9ubWVudC5hcGkucG93ZXJwbGF0Zm9ybS5jb206NDQz");
-
-    const p2 = _d("L3Bvd2VyYXV0b21hdGUvYXV0b21hdGlvbnMvZGlyZWN0L3dvcmtmbG93cy8=");
-    const wf = _d("YWZlM2ZlYWQ4NTkwNGM3YjhjZGY3ODRmZGJkNWY5Yzk="); // afe3fead...
-
-    const p3 = _d("L3RyaWdnZXJzL21hbnVhbC9wYXRocy9pbnZva2U/");
-    const q1 = _d("P2FwaS12ZXJzaW9uPTE=");
-    const q2 = _d("JnNwPSUyRnRyaWdnZXJzJTJGbWFudWFsJTJGcnVuJnN2PTEuMA==");
-
-    // sig separado en 2 para que no quede tan obvio
-    const s1 = _d("JnNpZz13dUt4NXMzOTFEZ0MzdHJqcFA="); // &sig=wuKx5s391DgC3trjpP
-    const s2 = _d("U2ozVWRlQ2YxcVVqak1IelNDOElwSlVUOA=="); // Sj3UdeCf1qUjjMHzSC8IpJUT8
-
-    return p1 + host + p2 + wf + p3 + q1 + q2 + s1 + s2;
-  }
+  // ✅ URL corta (sin ofuscar) como pediste
+  const FLOW_URL = "https://surl.lu/hmqrss";
 
   const elAgency = document.getElementById("agencyVal");
   const elClave  = document.getElementById("clave");
@@ -184,6 +167,8 @@
   const btnConfirm= document.getElementById("btnConfirm");
   const modalText = document.getElementById("modalText");
 
+  // ✅ Parámetro de agencia desde la URL:
+  // soporta: ?loc=6  o  ?agencia=6  o  ?id=6
   const params = new URLSearchParams(window.location.search);
   const locationId = (params.get("loc") || params.get("agencia") || params.get("id") || "DESCONOCIDO").trim();
   elAgency.textContent = locationId || "No detectada";
@@ -218,17 +203,20 @@
     showMsg("<strong>Procesando…</strong> Enviando solicitud al sistema.");
 
     const payload = {
-      locationId: locationId,
-      accion: action,       // "OPEN" | "CLOSE"
+      locationId: locationId, // compat con tu flow
+      accion: action,         // "OPEN" | "CLOSE"
       clave: clave,
       clientTime: nowISO()
     };
 
     try{
-      await fetch(getFlowUrl(), {
+      await fetch(FLOW_URL, {
         method: "POST",
         mode: "no-cors",
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        cache: "no-store",
+        keepalive: true,
+        redirect: "follow"
       });
 
       showMsg("<strong>Enviado ✅</strong> Si hay rechazo, el sistema lo validará internamente.");
@@ -256,8 +244,10 @@
   btnCancel.addEventListener("click", closeModal);
   btnConfirm.addEventListener("click", async () => { closeModal(); await sendAction("CLOSE"); });
 
+  // Enter = Apertura
   elClave.addEventListener("keydown", (e) => { if(e.key === "Enter") sendAction("OPEN"); });
 
+  // reloj
   function tick(){
     const d = new Date();
     const hh = String(d.getHours()).padStart(2,"0");
@@ -267,6 +257,7 @@
   tick();
   setInterval(tick, 15000);
 
+  // ESC cierra modal
   document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeModal(); });
   modalBack.addEventListener("click", (e) => { if(e.target === modalBack) closeModal(); });
 </script>
