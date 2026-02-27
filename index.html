@@ -75,7 +75,6 @@
     .status strong{color:var(--text)}
     .hint{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.35}
 
-    /* Modal */
     .modalBack{
       position:fixed;inset:0;background:rgba(0,0,0,.55);
       display:none;align-items:center;justify-content:center;padding:16px
@@ -132,12 +131,11 @@
       </div>
 
       <div class="hint">
-        Nota: esta pantalla confirma <strong>envío</strong>. La validación real (clave/estado/horario) ocurre en Power Automate.
+        Nota: la pantalla confirma <strong>envío</strong>. Validación real (clave/estado/horario) ocurre en Power Automate.
       </div>
     </div>
   </div>
 
-  <!-- Modal confirmación cierre -->
   <div class="modalBack" id="modalBack" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal">
       <h3 id="modalTitle">Confirmar cierre</h3>
@@ -150,32 +148,24 @@
   </div>
 
 <script>
-  /*
-    ✅ Mantiene el funcionamiento probado:
-    - POST con mode:"no-cors" (como tu código que ejecuta bien)
-    - Sin leer status/response (porque no-cors lo hace opaque)
-    - Envía locationId (compat con tu flow actual)
-    - Agrega accion + clave para tu nueva lógica
-    - URL ofuscada (no queda en claro en el repo)
-
-    ⚠️ Nota: aun así se verá en Network cuando se envía.
-  */
-
   // Base64 decode
   function _d(s){ try { return atob(s); } catch(e){ return ""; } }
 
-  // Construye la URL desde partes para evitar texto plano en el repo
+  // ✅ URL ofuscada para TU NUEVA URL
   function getFlowUrl(){
     const p1 = _d("aHR0cHM6Ly8="); // https://
     const host = _d("ZGVmYXVsdGY1YjBkNjgyMTQ5NzRkYjA5MDE5NjYwMDM1NTU0ZS43Mi5lbnZpcm9ubWVudC5hcGkucG93ZXJwbGF0Zm9ybS5jb206NDQz");
+
     const p2 = _d("L3Bvd2VyYXV0b21hdGUvYXV0b21hdGlvbnMvZGlyZWN0L3dvcmtmbG93cy8=");
-    const wf = _d("NThjYjg3NjBmM2E0NDFmNGJmYjFhZGE4N2U0YmJhYzk="); // workflow id
+    const wf = _d("YWZlM2ZlYWQ4NTkwNGM3YjhjZGY3ODRmZGJkNWY5Yzk="); // afe3fead...
+
     const p3 = _d("L3RyaWdnZXJzL21hbnVhbC9wYXRocy9pbnZva2U/");
     const q1 = _d("P2FwaS12ZXJzaW9uPTE=");
     const q2 = _d("JnNwPSUyRnRyaWdnZXJzJTJGbWFudWFsJTJGcnVuJnN2PTEuMA==");
-    // sig separado para que no quede obvio en texto plano
-    const s1 = _d("JnNpZz1Gaks2RjVrS3pXdThSOENCalhW");
-    const s2 = _d("TWpuSnBKN1djQ3J3WjBwbEpZcDJxdGkw");
+
+    // sig separado en 2 para que no quede tan obvio
+    const s1 = _d("JnNpZz13dUt4NXMzOTFEZ0MzdHJqcFA="); // &sig=wuKx5s391DgC3trjpP
+    const s2 = _d("U2ozVWRlQ2YxcVVqak1IelNDOElwSlVUOA=="); // Sj3UdeCf1qUjjMHzSC8IpJUT8
 
     return p1 + host + p2 + wf + p3 + q1 + q2 + s1 + s2;
   }
@@ -194,9 +184,6 @@
   const btnConfirm= document.getElementById("btnConfirm");
   const modalText = document.getElementById("modalText");
 
-  // ✅ Mantén compatibilidad con tu QR actual
-  // Si antes usabas ?loc=6, sigue funcionando.
-  // También acepta ?agencia=6 o ?id=6
   const params = new URLSearchParams(window.location.search);
   const locationId = (params.get("loc") || params.get("agencia") || params.get("id") || "DESCONOCIDO").trim();
   elAgency.textContent = locationId || "No detectada";
@@ -230,7 +217,6 @@
     setBusy(true);
     showMsg("<strong>Procesando…</strong> Enviando solicitud al sistema.");
 
-    // Payload: conserva locationId (tu flow ya lo usa)
     const payload = {
       locationId: locationId,
       accion: action,       // "OPEN" | "CLOSE"
@@ -242,12 +228,9 @@
       await fetch(getFlowUrl(), {
         method: "POST",
         mode: "no-cors",
-        // En no-cors NO fuerces Content-Type, déjalo simple
         body: JSON.stringify(payload)
       });
 
-      // ✅ Esto garantiza el mismo comportamiento "funciona / se ejecuta"
-      // (No podemos saber si el flow aceptó o rechazó, eso lo maneja el flow.)
       showMsg("<strong>Enviado ✅</strong> Si hay rechazo, el sistema lo validará internamente.");
       elClave.value = "";
       elClave.focus();
@@ -258,7 +241,6 @@
     }
   }
 
-  // Modal cierre
   function openCloseModal(){
     if(!locationId || locationId === "DESCONOCIDO"){
       showMsg("<strong>Error.</strong> Falta el parámetro de agencia en la URL (ej: ?loc=6).");
@@ -274,10 +256,8 @@
   btnCancel.addEventListener("click", closeModal);
   btnConfirm.addEventListener("click", async () => { closeModal(); await sendAction("CLOSE"); });
 
-  // Enter = Apertura (rápido para guardia)
   elClave.addEventListener("keydown", (e) => { if(e.key === "Enter") sendAction("OPEN"); });
 
-  // reloj
   function tick(){
     const d = new Date();
     const hh = String(d.getHours()).padStart(2,"0");
@@ -287,7 +267,6 @@
   tick();
   setInterval(tick, 15000);
 
-  // ESC cierra modal
   document.addEventListener("keydown", (e) => { if(e.key === "Escape") closeModal(); });
   modalBack.addEventListener("click", (e) => { if(e.target === modalBack) closeModal(); });
 </script>
